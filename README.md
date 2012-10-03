@@ -6,10 +6,12 @@
 
 <img src="https://raw.github.com/psychotropic/get--url/master/upload.png">
 
-#### Installation
-Dependencies, install using cpan or [cpanm](https://github.com/miyagawa/cpanminus/) (some of them should be bundled with perl)
+
+#### Dependencies
+install using cpan or [cpanm](https://github.com/miyagawa/cpanminus/) (some of them should be already bundled with perl)
 
     LWP::Protocol::https File::HomeDir File::Slurp File::Basename Cwd DBM::Deep URI::Encode LWP::UserAgent Digest::SHA1 utf8
+#### Installation
 
     sudo curl https://raw.github.com/psychotropic/get--url/master/get-url -o /usr/bin/get-url;
     sudo chmod +x /usr/bin/get-url
