@@ -8,6 +8,7 @@
 
 #### Installation
 Dependencies, install using cpan or [cpanm](https://github.com/miyagawa/cpanminus/) (some of them should be bundled with perl)
+
     LWP::Protocol::https File::HomeDir File::Slurp File::Basename Cwd DBM::Deep URI::Encode LWP::UserAgent Digest::SHA1 utf8
 
     sudo curl https://raw.github.com/psychotropic/get--url/master/get-url -o /usr/bin/get-url;
@@ -22,7 +23,4 @@ it should be cross-platform. (Only tested on linux)
 
 If caching is enabled a SHA1 of your file and it's correspondant URL will be stored on a database to be retrieved later and avoid having to reupload the same data.
 
-The config file generated remains compatible with [geturl](https://github.com/uams/geturl) in case you want to go back.
-
-Dependencies, install using cpan or [cpanm](https://github.com/miyagawa/cpanminus/) (some of them should be bundled with perl)
-    LWP::Protocol::https File::HomeDir File::Slurp File::Basename Cwd DBM::Deep URI::Encode LWP::UserAgent Digest::SHA1 utf8
+The config file generated remains compatible with [geturl](https://github.com/uams/geturl) in case you want to go back but you should delete your `.geturl` file if you want to switch to Get::Url.
