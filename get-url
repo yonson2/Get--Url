@@ -1,0 +1,113 @@
+#!/usr/bin/env perl
+$| = 1;
+use strict;
+use warnings;
+
+use File::HomeDir;
+use File::Slurp;
+use File::Basename;
+use Cwd;
+use DBM::Deep;
+use utf8;
+use Digest::SHA1;
+use URI::Encode qw(uri_encode uri_decode);
+use LWP::UserAgent;
+use HTTP::Request::Common;
+$HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
+use JSON;
+
+my $ua = LWP::UserAgent->new( agent => "Get::Url 0.1", ssl_opts => { verify_hostname => 0 }, );
+
+#Config
+my $fpurl = 'https://www.filepicker.io';
+my $fpapiurl = 'https://developers.filepicker.io';
+my $dir = getcwd;
+my $home = File::HomeDir->my_home;
+
+#No args
+die "usage: $0 /path/to/fileorfiles\n" unless @ARGV;
+#Read or create the configuration file.
+my @config;
+chdir $home;
+if (-e '.geturl') {
+	#Read file
+	@config = read_file('.geturl');
+} else {
+	#Config file doesn't exist, create it.
+	#Get an API key
+	print "Enter an email to link or create your FilePicker account: ";
+	chomp (my $email = <STDIN>);
+	my $api = $ua->get("$fpapiurl/getKey?email=$email");
+	$api = $api->content;
+	#Ask for caching.
+	print "Would you like to enable caching? (y/n): ";
+	chomp (my $cache = <STDIN>);
+	if ($cache =~ /(y|yes)/i) { $cache = 1; } else { $cache = 0; }
+	write_file( '.geturl', ("[filepicker]\n", "apikey = $api\n", "cache = $cache\n"));
+	@config = read_file('.geturl');
+}
+my $api = $1 if ($config[1] =~ /apikey = ([\w_-]+)/);
+my $cache = $1 if ($config[2] =~ /cache = (\d)/);
+chdir $dir;
+#Upload files, if multiple files are given prepend the link with the file name.
+my @clipboard;
+foreach my $file (@ARGV){
+	die "$file doesn't exist" unless (-e $file);
+	my($filename, $directories) = fileparse($file);
+	#We will generate the SHA1 of a file and check if a file with the same SHA1 has been uploaded before.
+	if ($cache == 1) {
+		chdir $home;
+		tie my %db, 'DBM::Deep', ".geturl.db";
+		chdir $dir;
+		my $fh;
+		unless (open $fh, $file) {
+			warn "$0: open $file: $!\n";
+			next;
+		}
+		my $sha1 = Digest::SHA1->new;
+		$sha1->addfile($fh);
+		my $digest = $sha1->hexdigest;
+		if ($db{$digest}) {
+			#File has been uploaded before.
+			push (@clipboard, $db{$digest});
+			print "\nFile already uploaded, retrieving URL... \n";
+			print "\nA Public Share URL for: $filename\n$db{$digest}\n\n";
+			next;
+		}
+	}
+	print "\nUploading the file to Filepicker.io... \n";
+	my $uploadurl = uri_encode("$fpurl/api/path/storage/$filename");
+	my $upload = $ua->post( "$uploadurl",
+		Content_Type => 'form-data',
+		Content => [
+						fileUpload => [ "$file" ],
+						apikey	   => "$api",
+				   ],                              );
+	my $result = from_json($upload->content);
+	chomp( my $url = ${$result}{data}[0]{url} );
+	if ($cache == 1) {
+		chdir $home;
+		tie my %db, 'DBM::Deep', ".geturl.db";
+		chdir $dir;
+		my $fh;
+		unless (open $fh, $file) {
+			warn "$0: open $file: $!\n";
+			next;
+		}
+		my $sha1 = Digest::SHA1->new;
+		$sha1->addfile($fh);
+		my $digest = $sha1->hexdigest;
+		$db{$digest} = $url;
+	}
+	push(@clipboard, $url);
+	print "\nA Public Share URL for: $filename\n$url\n\n";
+}
+if ($^O eq "linux" ) {
+	`echo @clipboard | xclip -selection clipboard > /dev/null 2>&1`;
+} elsif ($^O eq "darwin" ) {
+	`echo @clipboard | pbcopy`;
+} elsif ($^O eq "MSWin32" ) {
+	`echo @clipboard | clip`;
+}
+
+print "Also in your clipboard\n";
